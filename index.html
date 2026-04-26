@@ -1,13 +1,15 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" style="color-scheme:light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light only">
 <title>J&A Blanquería</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
+:root, * { color-scheme: light only; }
 :root {
   --bg:        #f7f7f7;
   --surface:   #ffffff;
@@ -865,43 +867,11 @@ body{
 <div class="view active" id="view-catalogo">
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
-    <input class="search-inp" id="searchInp" type="text" placeholder="Buscar producto…" oninput="filterCatalog()">
-    <button class="mic-btn" id="micBtn" onclick="openVoiceModal()" title="Cargar carrito por voz">🎙️</button>
+    <input class="search-inp" id="searchInp" type="text" placeholder="Buscar y agregar al carrito…" oninput="filterCatalog()">
   </div>
+  <div id="quickAddResults" style="display:none"></div>
   <div class="sec"><span class="sec-txt">Todos los productos</span><span class="sec-line"></span></div>
   <div id="catalogList"></div>
-</div>
-
-<!-- ══ MODAL DE VOZ ══ -->
-<div class="modal-overlay" id="voiceModal" onclick="closeVoiceModal(event)">
-  <div class="modal-box voice-modal">
-    <div class="voice-modal-hd">
-      <div class="voice-modal-title">🎙️ Cargar por voz</div>
-      <button class="modal-close" onclick="closeVoiceModal()">✕</button>
-    </div>
-    <div class="voice-modal-body">
-      <div class="voice-hint">Decí los productos y cantidades.<br>Ej: <em>"tres sábanas 2½, dos acolchados y una cortina de baño"</em></div>
-      <div class="voice-btn-wrap">
-        <button class="voice-record-btn" id="voiceRecordBtn" onclick="toggleVoiceRecording()">
-          <span class="voice-record-icon">🎙️</span>
-          <span class="voice-record-lbl" id="voiceRecordLbl">Tocar para hablar</span>
-        </button>
-      </div>
-      <div class="voice-transcript-wrap" id="voiceTranscriptWrap" style="display:none">
-        <div class="voice-transcript-lbl">Escuché:</div>
-        <div class="voice-transcript" id="voiceTranscript"></div>
-      </div>
-      <div class="voice-result-wrap" id="voiceResultWrap" style="display:none">
-        <div class="voice-result-lbl">¿Esto es lo que querés agregar?</div>
-        <div id="voiceResultList"></div>
-        <div class="voice-not-found" id="voiceNotFound" style="display:none"></div>
-        <div style="display:flex;gap:8px;margin-top:14px">
-          <button class="btn btn-dark" onclick="confirmVoiceCart()" style="margin:0;flex:1">✅ Confirmar y agregar</button>
-          <button class="btn btn-outline" onclick="resetVoice()" style="margin:0;flex:1">🔄 Intentar de nuevo</button>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- ══ CARRITO ══ -->
@@ -1195,8 +1165,47 @@ function switchTab(name){
 // CATÁLOGO
 // ═══════════════════════════════════════════
 function filterCatalog(){
-  const q = val('searchInp').toLowerCase();
-  renderProdList(q ? products.filter(p=>p.name.toLowerCase().includes(q)) : products);
+  const q = val('searchInp').toLowerCase().trim();
+  const qa = el('quickAddResults');
+  if(!q){ 
+    qa.style.display='none'; 
+    renderProdList(products); 
+    return; 
+  }
+  const filtered = products.filter(p=>p.name.toLowerCase().includes(q));
+  renderProdList(filtered);
+  // Quick-add panel
+  if(!filtered.length){ qa.style.display='none'; return; }
+  qa.style.display='block';
+  qa.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
+      <div style="padding:8px 14px;font-size:10px;font-weight:700;color:var(--ink-dim);letter-spacing:1.5px;text-transform:uppercase;background:var(--bg);border-bottom:1px solid var(--border)">
+        ⚡ Agregar rápido al carrito
+      </div>
+      ${filtered.slice(0,5).map(p=>{
+        const inCart = cart.some(c=>!c.isCombo&&c.id===p.id);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
+            <div style="font-size:11px;color:var(--ink-dim)">${fmt(p.sale)}</div>
+          </div>
+          <button onclick="quickAddToCart(${p.id})" style="background:${inCart?'var(--profit)':'var(--ink)'};border:none;border-radius:var(--r-sm);padding:8px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0">
+            ${inCart?'✓ En carrito':'+ Agregar'}
+          </button>
+        </div>`;
+      }).join('')}
+      ${filtered.length>5?`<div style="padding:8px 14px;font-size:11px;color:var(--ink-dim);text-align:center">+${filtered.length-5} más abajo</div>`:''}
+    </div>`;
+}
+
+function quickAddToCart(id){
+  const p = products.find(x=>x.id===id); if(!p) return;
+  const existing = cart.find(c=>!c.isCombo&&c.id===id);
+  if(existing){ existing.qty++; }
+  else{ cart.push({id:p.id,name:p.name,sale:p.sale,cost:p.cost||0,qty:1,bulkQty:p.bulkQty||0,bulkPrice:p.bulkPrice||0}); }
+  saveCart(); updateBadge();
+  toast('✓ '+p.name+' agregado');
+  filterCatalog(); // re-render para marcar como "en carrito"
 }
 function renderCatalog(){
   if(el('searchInp')) el('searchInp').value='';
@@ -1847,37 +1856,49 @@ function renderPicking(){
     : pickFilter==='ok'      ? doneArr
     : missArr;
 
-  const items = filtered.length===0
-    ? `<div class="empty" style="padding:30px 0"><div class="empty-txt">Sin productos en este filtro.</div></div>`
-    : filtered.map(item=>{
-        const st   = pickState[item.id]||null;
-        const note = pickState[item.id+'_note']||'';
-        const cls  = st==='ok'?'done':st==='missing'?'missing':'';
-        const icon = st==='ok'?'✅':st==='missing'?'❌':'⬜';
-        const idStr = String(item.id).replace(/'/g,"\\'");
-        const comboTag = item.isCombo
-          ? `<div style="font-size:10px;font-weight:600;color:var(--ink-dim);margin-top:2px">🎁 ${esc(item.comboName)}</div>` : '';
-        return `
-        <div class="pick-item ${cls}" id="pick-${idStr}">
-          <div class="pick-row">
-            <div class="pick-check" onclick="pickToggle('${idStr}')">${icon}</div>
-            <div class="pick-info">
-              <div class="pick-name">${esc(item.name)}</div>
-              <div class="pick-qty">${item.qty} unidad${item.qty>1?'es':''} solicitada${item.qty>1?'s':''}</div>
-              ${comboTag}
-            </div>
-            <div class="pick-actions">
-              <button class="pick-action-btn ok" onclick="pickSet('${idStr}','ok')">✔</button>
-              <button class="pick-action-btn no" onclick="pickSet('${idStr}','missing')">✘</button>
-              <button class="pick-action-btn"    onclick="pickSet('${idStr}',null)">↺</button>
-            </div>
-          </div>
-          <div class="pick-note-row">
-            <input class="pick-note-inp" type="text" placeholder="Anotá el motivo (opcional)…"
-              value="${esc(note)}" oninput="pickNote('${idStr}',this.value)">
-          </div>
-        </div>`;
-      }).join('');
+  function renderPickItem(item){
+    const st   = pickState[item.id]||null;
+    const note = pickState[item.id+'_note']||'';
+    const cls  = st==='ok'?'done':st==='missing'?'missing':'';
+    const icon = st==='ok'?'✅':st==='missing'?'❌':'⬜';
+    const idStr = String(item.id).replace(/'/g,"\\'");
+    const comboTag = item.isCombo
+      ? `<div style="font-size:10px;font-weight:600;color:var(--ink-dim);margin-top:2px">🎁 ${esc(item.comboName)}</div>` : '';
+    return `
+    <div class="pick-item ${cls}" id="pick-${idStr}">
+      <div class="pick-row">
+        <div class="pick-check" onclick="pickToggle('${idStr}')">${icon}</div>
+        <div class="pick-info">
+          <div class="pick-name">${esc(item.name)}</div>
+          <div class="pick-qty">${item.qty} unidad${item.qty>1?'es':''} solicitada${item.qty>1?'s':''}</div>
+          ${comboTag}
+        </div>
+        <div class="pick-actions">
+          <button class="pick-action-btn ok" onclick="pickSet('${idStr}','ok')">✔</button>
+          <button class="pick-action-btn no" onclick="pickSet('${idStr}','missing')">✘</button>
+          <button class="pick-action-btn"    onclick="pickSet('${idStr}',null)">↺</button>
+        </div>
+      </div>
+      <div class="pick-note-row">
+        <input class="pick-note-inp" type="text" placeholder="Anotá el motivo (opcional)…"
+          value="${esc(note)}" oninput="pickNote('${idStr}',this.value)">
+      </div>
+    </div>`;
+  }
+
+  let items;
+  if(pickGrouped){
+    const groups = groupPickItems(filtered);
+    items = Object.entries(groups).map(([cat, groupItems])=>`
+      <div style="margin-bottom:4px">
+        <div style="font-size:10px;font-weight:700;color:var(--ink-dim);letter-spacing:1.5px;text-transform:uppercase;padding:10px 0 6px">${cat}</div>
+        ${groupItems.map(renderPickItem).join('')}
+      </div>`).join('');
+  } else {
+    items = filtered.length===0
+      ? `<div class="empty" style="padding:30px 0"><div class="empty-txt">Sin productos en este filtro.</div></div>`
+      : filtered.map(renderPickItem).join('');
+  }
 
   w.innerHTML = `
     <div class="picking-header">
@@ -1926,6 +1947,11 @@ function renderPicking(){
       <button class="pfb ${pickFilter==='ok'?'active':''}"      onclick="setPickFilter('ok')">✅ (${done})</button>
       <button class="pfb ${pickFilter==='missing'?'active':''}" onclick="setPickFilter('missing')">❌ (${missing})</button>
     </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button onclick="togglePickGroup()" style="background:${pickGrouped?'var(--ink)':'var(--bg)'};color:${pickGrouped?'#fff':'var(--ink-mid)'};border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer">
+        📦 ${pickGrouped?'Agrupado por tipo ✓':'Agrupar por tipo'}
+      </button>
+    </div>
 
     ${items}
     <div class="divider"></div>
@@ -1934,6 +1960,31 @@ function renderPicking(){
 }
 
 function setPickFilter(f){ pickFilter=f; renderPicking(); }
+let pickGrouped = false;
+function togglePickGroup(){ pickGrouped=!pickGrouped; renderPicking(); }
+
+// Categorías para agrupar productos en armado
+function getProductCategory(name){
+  const n = name.toLowerCase();
+  if(n.includes('sában')||n.includes('saban')||n.includes('ajustable')||n.includes('juego')) return '🛏️ Sábanas y juegos';
+  if(n.includes('acolchado')||n.includes('frazada')||n.includes('manta')||n.includes('plush')||n.includes('corderito')) return '🌡️ Acolchados y frazadas';
+  if(n.includes('cortina')||n.includes('tropical')) return '🪟 Cortinas';
+  if(n.includes('toall')||n.includes('poncho')||n.includes('esponja')) return '🚿 Baño';
+  if(n.includes('mantel')||n.includes('repasador')||n.includes('gourmet')||n.includes('cocina')) return '🍽️ Cocina';
+  if(n.includes('alfombra')) return '🏠 Alfombras';
+  if(n.includes('combo')||n.includes('pack')||n.includes('set')) return '🎁 Combos y sets';
+  return '📦 Otros';
+}
+
+function groupPickItems(list){
+  const groups = {};
+  list.forEach(item=>{
+    const cat = item.isCombo ? '🎁 Combos' : getProductCategory(item.name);
+    if(!groups[cat]) groups[cat]=[];
+    groups[cat].push(item);
+  });
+  return groups;
+}
 
 function pickToggle(id){
   const cur=pickState[id];
