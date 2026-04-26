@@ -798,15 +798,39 @@ body{
 
 <!-- NAV -->
 <div class="nav">
-  <div class="nav-tab active" id="tab-catalogo"  onclick="switchTab('catalogo')">Catálogo</div>
-  <div class="nav-tab"        id="tab-combos"    onclick="switchTab('combos')">🎁 Combos</div>
-  <div class="nav-tab"        id="tab-carrito"   onclick="switchTab('carrito')">Carrito</div>
-  <div class="nav-tab"        id="tab-picking"   onclick="switchTab('picking')">📦 Armado</div>
-  <div class="nav-tab"        id="tab-ganancias" onclick="switchTab('ganancias')">Ganancias</div>
-  <div class="nav-tab"        id="tab-mensual"   onclick="switchTab('mensual')">Mensual</div>
-  <div class="nav-tab"        id="tab-calc"      onclick="switchTab('calc')">Calculadora</div>
-  <div class="nav-tab"        id="tab-remito"    onclick="switchTab('remito')">Remito</div>
-  <div class="nav-tab"        id="tab-admin"     onclick="switchTab('admin')">Productos</div>
+  <div class="nav-tab active" id="tab-catalogo"   onclick="switchTab('catalogo')">Catálogo</div>
+  <div class="nav-tab"        id="tab-combos"     onclick="switchTab('combos')">🎁 Combos</div>
+  <div class="nav-tab"        id="tab-carrito"    onclick="switchTab('carrito')">Carrito</div>
+  <div class="nav-tab"        id="tab-cobros"     onclick="switchTab('cobros')">💰 Cobros</div>
+  <div class="nav-tab"        id="tab-picking"    onclick="switchTab('picking')">📦 Armado</div>
+  <div class="nav-tab"        id="tab-ganancias"  onclick="switchTab('ganancias')">Ganancias</div>
+  <div class="nav-tab"        id="tab-topventas"  onclick="switchTab('topventas')">⭐ Top Ventas</div>
+  <div class="nav-tab"        id="tab-mensual"    onclick="switchTab('mensual')">Mensual</div>
+  <div class="nav-tab"        id="tab-calc"       onclick="switchTab('calc')">Calculadora</div>
+  <div class="nav-tab"        id="tab-remito"     onclick="switchTab('remito')">Remito</div>
+  <div class="nav-tab"        id="tab-admin"      onclick="switchTab('admin')">Productos</div>
+</div>
+
+<!-- ══ COBROS ══ -->
+<div class="view" id="view-cobros">
+  <div class="sec"><span class="sec-txt">💰 Pendientes de cobro</span><span class="sec-line"></span></div>
+  <div id="cobrosContent"></div>
+  <div class="divider"></div>
+  <div class="sec"><span class="sec-txt">Registrar cobro manual</span><span class="sec-line"></span></div>
+  <div class="sync-card">
+    <div class="sync-card-title">+ Agregar pendiente</div>
+    <div class="sync-card-sub">Para pedidos que no cerraste desde el carrito.</div>
+    <input id="cobroNombre" class="combo-name-inp" type="text" placeholder="Nombre de la clienta" style="margin-bottom:8px">
+    <input id="cobroMonto" class="combo-price-inp" type="number" inputmode="numeric" placeholder="Monto total" style="width:100%;margin-bottom:8px">
+    <input id="cobroNota" class="combo-name-inp" type="text" placeholder="Nota (opcional, ej: cobra al recibir)" style="margin-bottom:12px">
+    <button class="btn btn-dark" onclick="agregarCobro()" style="margin:0">Agregar pendiente</button>
+  </div>
+</div>
+
+<!-- ══ TOP VENTAS ══ -->
+<div class="view" id="view-topventas">
+  <div class="sec"><span class="sec-txt">⭐ Productos más vendidos</span><span class="sec-line"></span></div>
+  <div id="topVentasContent"></div>
 </div>
 
 <!-- ══ COMBOS ══ -->
@@ -1146,15 +1170,18 @@ function toast(msg){
 // TABS
 // ═══════════════════════════════════════════
 function switchTab(name){
-  ['catalogo','combos','carrito','picking','ganancias','mensual','calc','remito','admin'].forEach(t=>{
-    el('tab-'+t).classList.toggle('active', t===name);
-    el('view-'+t).classList.toggle('active', t===name);
+  ['catalogo','combos','carrito','cobros','picking','ganancias','topventas','mensual','calc','remito','admin'].forEach(t=>{
+    const tb=el('tab-'+t), vw=el('view-'+t);
+    if(tb) tb.classList.toggle('active', t===name);
+    if(vw) vw.classList.toggle('active', t===name);
   });
   if(name==='catalogo')  renderCatalog();
   if(name==='combos')    renderCombos();
   if(name==='carrito')   renderCart();
+  if(name==='cobros')    renderCobros();
   if(name==='picking')   renderPicking();
   if(name==='ganancias') renderProfits();
+  if(name==='topventas') renderTopVentas();
   if(name==='mensual')   renderMensual();
   if(name==='calc')      initCalc();
   if(name==='remito')    renderRemito();
@@ -1355,7 +1382,13 @@ function renderCart(){
         <div class="sum-val" id="sumTotal">${fmt(cartTotal())}</div>
       </div>
     </div>
-    <button class="btn btn-dark" onclick="switchTab('ganancias')">📊 Ver mis ganancias</button>
+    <div class="sync-card" style="margin-bottom:12px">
+      <div class="sync-card-title">📝 Datos del pedido</div>
+      <input id="cartClientName" class="combo-name-inp" type="text" placeholder="Nombre de la clienta (opcional)" style="margin-bottom:8px" value="${lsGet('ja_cart_client','')}">
+      <input id="cartClientNote" class="combo-name-inp" type="text" placeholder="Nota (ej: cobra al recibir, debe $X)" value="${lsGet('ja_cart_note','')}">
+    </div>
+    <button class="btn btn-dark" onclick="cerrarPedido()">✅ Cerrar pedido y registrar</button>
+    <button class="btn btn-outline" onclick="switchTab('ganancias')">📊 Ver ganancias</button>
     <button class="btn btn-outline" onclick="switchTab('remito')">📄 Generar remito</button>
     <button class="btn btn-ghost" onclick="confirmClear()">Vaciar carrito</button>`;
 }
@@ -2230,6 +2263,185 @@ function chgComboPrice(cartId, val){
 function removeComboFromCart(cartId){
   cart = cart.filter(c=>c.id!==cartId);
   saveCart(); updateBadge(); renderCart();
+}
+
+// ═══════════════════════════════════════════
+// COBROS PENDIENTES
+// ═══════════════════════════════════════════
+let cobros = lsGet('ja_cobros', []);
+function saveCobros(){ lsSet('ja_cobros', cobros); }
+function nextCobroId(){ return cobros.length ? Math.max(...cobros.map(c=>c.id))+1 : 1; }
+
+function cerrarPedido(){
+  if(!cart.length){ toast('⚠  El carrito está vacío'); return; }
+  const nombre = el('cartClientName') ? el('cartClientName').value.trim() : '';
+  const nota   = el('cartClientNote') ? el('cartClientNote').value.trim() : '';
+  const total  = cartTotal();
+  const esPendiente = nota.toLowerCase().includes('recibir') || nota.toLowerCase().includes('debe') || nota.toLowerCase().includes('pendiente');
+
+  // Registrar en top ventas
+  cart.forEach(item=>{
+    if(item.isCombo) return;
+    registrarVentaProducto(item.id, item.qty);
+  });
+
+  // Si tiene nota de cobro pendiente, agregar a cobros
+  if(esPendiente || (nombre && confirm(`¿Registrar este pedido de ${nombre||'clienta'} como pendiente de cobro?\n\nTotal: ${fmt(total)}`))){
+    cobros.push({
+      id:     nextCobroId(),
+      nombre: nombre || 'Sin nombre',
+      total,
+      nota,
+      fecha:  today(),
+      items:  cart.map(i=>i.isCombo ? `🎁 ${i.name}` : `${i.qty}x ${i.name}`).join(', '),
+      pagado: false
+    });
+    saveCobros();
+    toast('✓ Pedido registrado en Cobros pendientes');
+  } else {
+    toast('✓ Venta registrada');
+  }
+
+  // Guardar en historial mensual
+  const ventas = lsGet('ja_ventas', {});
+  const mes = new Date().toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  if(!ventas[mes]) ventas[mes]=[];
+  ventas[mes].push({ fecha:today(), nombre, total, nota });
+  lsSet('ja_ventas', ventas);
+
+  // Limpiar carrito
+  lsSet('ja_cart_client','');
+  lsSet('ja_cart_note','');
+  cart=[]; saveCart(); updateBadge();
+  switchTab('cobros');
+}
+
+function agregarCobro(){
+  const nombre = val('cobroNombre').trim();
+  const monto  = parseInt(val('cobroMonto'))||0;
+  const nota   = val('cobroNota').trim();
+  if(!nombre){ toast('⚠  Ingresá el nombre de la clienta'); return; }
+  if(!monto)  { toast('⚠  Ingresá el monto'); return; }
+  cobros.push({ id:nextCobroId(), nombre, total:monto, nota, fecha:today(), items:'', pagado:false });
+  saveCobros();
+  el('cobroNombre').value='';
+  el('cobroMonto').value='';
+  el('cobroNota').value='';
+  renderCobros();
+  toast('✓ Pendiente agregado');
+}
+
+function marcarPagado(id){
+  const c = cobros.find(x=>x.id===id); if(!c) return;
+  if(!confirm(`¿Marcar como cobrado el pedido de ${c.nombre}?\n${fmt(c.total)}`)) return;
+  cobros = cobros.filter(x=>x.id!==id);
+  saveCobros();
+  renderCobros();
+  toast('✓ Cobro registrado — eliminado de pendientes');
+}
+
+function eliminarCobro(id){
+  if(!confirm('¿Eliminar este pendiente?')) return;
+  cobros = cobros.filter(x=>x.id!==id);
+  saveCobros();
+  renderCobros();
+}
+
+function renderCobros(){
+  const w = el('cobrosContent'); if(!w) return;
+  const pendientes = cobros.filter(c=>!c.pagado);
+  const totalPend  = pendientes.reduce((s,c)=>s+c.total,0);
+
+  if(!pendientes.length){
+    w.innerHTML=`<div class="empty"><div class="empty-ico">✅</div><div class="empty-txt">No hay cobros pendientes.<br>¡Todo al día!</div></div>`;
+    return;
+  }
+
+  w.innerHTML = `
+    <div class="sync-card" style="background:#fffbf0;border-color:#f0d070;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:12px;font-weight:700;color:#7a5a00">Total pendiente de cobro</div>
+        <div style="font-size:20px;font-weight:800;font-family:'Syne',sans-serif;color:#7a5a00">${fmt(totalPend)}</div>
+      </div>
+      <div style="font-size:11px;color:#a07000;margin-top:4px">${pendientes.length} pedido${pendientes.length!==1?'s':''} pendiente${pendientes.length!==1?'s':''}</div>
+    </div>
+    ${pendientes.map(c=>`
+    <div class="sync-card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--ink)">${esc(c.nombre)}</div>
+          <div style="font-size:11px;color:var(--ink-dim);margin-top:2px">${c.fecha}${c.nota?' · '+esc(c.nota):''}</div>
+          ${c.items?`<div style="font-size:11px;color:var(--ink-xdim);margin-top:4px">${esc(c.items)}</div>`:''}
+        </div>
+        <div style="font-size:18px;font-weight:800;font-family:'Syne',sans-serif;color:var(--ink);white-space:nowrap">${fmt(c.total)}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-dark" onclick="marcarPagado(${c.id})" style="margin:0;flex:1;font-size:13px;padding:10px">💵 Cobrado</button>
+        <button class="btn btn-ghost" onclick="eliminarCobro(${c.id})" style="margin:0;font-size:13px;padding:10px">🗑</button>
+      </div>
+    </div>`).join('')}`;
+}
+
+// ═══════════════════════════════════════════
+// TOP VENTAS
+// ═══════════════════════════════════════════
+let ventasContador = lsGet('ja_ventas_contador', {});
+function saveVentasContador(){ lsSet('ja_ventas_contador', ventasContador); }
+
+function registrarVentaProducto(productId, qty){
+  const key = String(productId);
+  if(!ventasContador[key]) ventasContador[key]={ qty:0, mes:{} };
+  ventasContador[key].qty += qty;
+  const mes = new Date().toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  if(!ventasContador[key].mes[mes]) ventasContador[key].mes[mes]=0;
+  ventasContador[key].mes[mes] += qty;
+  saveVentasContador();
+}
+
+function renderTopVentas(){
+  const w = el('topVentasContent'); if(!w) return;
+  const entries = Object.entries(ventasContador)
+    .map(([id,data])=>{
+      const p = products.find(x=>x.id===parseInt(id));
+      return { name: p?p.name:('Producto #'+id), qty: data.qty, id };
+    })
+    .filter(e=>e.qty>0)
+    .sort((a,b)=>b.qty-a.qty);
+
+  if(!entries.length){
+    w.innerHTML=`
+      <div class="empty"><div class="empty-ico">⭐</div><div class="empty-txt">Todavía no hay ventas registradas.<br>Cuando cerrés pedidos desde el carrito, acá aparece el ranking.</div></div>
+      <div class="sync-card" style="background:#f0f8ff;border-color:#b0d4f0">
+        <div class="sync-card-title" style="color:#1a5a8a">💡 ¿Cómo funciona?</div>
+        <div style="font-size:12px;color:#1a5a8a;line-height:1.8">Cada vez que tocás <strong>"Cerrar pedido"</strong> en el carrito, se suma automáticamente la cantidad vendida de cada producto. Este ranking se va construyendo solo con el tiempo.</div>
+      </div>`;
+    return;
+  }
+
+  const max = entries[0].qty;
+  w.innerHTML = `
+    <div class="sync-card" style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--ink-dim);line-height:1.6">Ranking acumulado desde que empezaste a cerrar pedidos en la app. Te muestra qué productos prefieren más tus clientas.</div>
+    </div>
+    ${entries.map((e,i)=>{
+      const pct = Math.round(e.qty/max*100);
+      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+      return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+            <span style="font-size:18px;flex-shrink:0">${medal}</span>
+            <div style="font-size:13px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.name)}</div>
+          </div>
+          <div style="font-size:14px;font-weight:800;font-family:'Syne',sans-serif;color:var(--ink);flex-shrink:0;margin-left:8px">${e.qty} ud.</div>
+        </div>
+        <div style="background:var(--bg);border-radius:20px;height:6px;overflow:hidden">
+          <div style="background:var(--ink);height:100%;width:${pct}%;border-radius:20px;transition:width .4s"></div>
+        </div>
+      </div>`;
+    }).join('')}
+    <div class="divider"></div>
+    <button class="btn btn-ghost" onclick="if(confirm('¿Reiniciar el contador de ventas? Esto no se puede deshacer.')){ventasContador={};saveVentasContador();renderTopVentas();}">↺ Reiniciar contador</button>`;
 }
 
 // ═══════════════════════════════════════════
