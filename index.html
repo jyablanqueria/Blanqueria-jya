@@ -992,7 +992,11 @@ body{
 
 <!-- ══ ADMIN ══ -->
 <div class="view" id="view-admin">
-  <button class="btn btn-dark" onclick="openAdd()" style="margin-bottom:18px">+ Agregar producto</button>
+  <button class="btn btn-dark" onclick="openAdd()" style="margin-bottom:12px">+ Agregar producto</button>
+  <div class="search-wrap" style="margin-bottom:14px">
+    <span class="search-icon">🔍</span>
+    <input class="search-inp" id="adminSearch" type="text" placeholder="Buscar producto para editar…" oninput="renderAdmin()">
+  </div>
   <div class="sec"><span class="sec-txt">Lista de productos</span><span class="sec-line"></span></div>
   <div id="adminList"></div>
 
@@ -1074,6 +1078,21 @@ body{
     <div class="form-row">
       <label class="form-lbl">Precio mayorista por unidad</label>
       <input class="form-inp" id="mBulkPrice" type="number" inputmode="numeric" placeholder="Ej: 8000 — opcional">
+    </div>
+    <div class="hint-box" style="background:#f0f8ff;border-color:#b0d4f0;color:#1a5a8a;">
+      📦 Precio fardo: si comprás/vendés por fardo (cantidad mayor), podés poner un precio especial aún menor al mayorista.
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">Cantidad mínima para precio fardo</label>
+      <input class="form-inp" id="mFardoQty" type="number" inputmode="numeric" placeholder="Ej: 12 — opcional">
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">Precio fardo por unidad (lo que cobrás)</label>
+      <input class="form-inp" id="mFardoPrice" type="number" inputmode="numeric" placeholder="Ej: 6000 — opcional">
+    </div>
+    <div class="form-row">
+      <label class="form-lbl">Tu costo por unidad al comprar fardo</label>
+      <input class="form-inp" id="mFardoCost" type="number" inputmode="numeric" placeholder="Ej: 4500 — opcional">
     </div>
     <div style="height:10px"></div>
     <button class="btn btn-dark" onclick="saveProduct()">Guardar producto</button>
@@ -1276,13 +1295,24 @@ function addToCart(id){
 function applyBulkPrice(item, prod){
   if(!prod) prod = products.find(x=>x.id===item.id);
   if(!prod) return;
-  const bq = prod.bulkQty||0, bp = prod.bulkPrice||0;
-  if(bq>0 && bp>0 && item.qty>=bq){
-    item.sale = bp;
-    item.bulkActive = true;
+  const bq=prod.bulkQty||0,  bp=prod.bulkPrice||0;
+  const fq=prod.fardoQty||0, fp=prod.fardoPrice||0, fc=prod.fardoCost||0;
+  // Fardo tiene prioridad sobre mayorista
+  if(fq>0 && fp>0 && item.qty>=fq){
+    item.sale        = fp;
+    item.cost        = fc>0 ? fc : prod.cost||0; // usar costo fardo si existe
+    item.bulkActive  = false;
+    item.fardoActive = true;
+  } else if(bq>0 && bp>0 && item.qty>=bq){
+    item.sale        = bp;
+    item.cost        = prod.cost||0; // costo normal
+    item.bulkActive  = true;
+    item.fardoActive = false;
   } else {
-    item.sale = prod.sale;
-    item.bulkActive = false;
+    item.sale        = prod.sale;
+    item.cost        = prod.cost||0;
+    item.bulkActive  = false;
+    item.fardoActive = false;
   }
 }
 function updateBadge(){
@@ -1342,13 +1372,19 @@ function renderCart(){
       ? `<span class="profit-chip ${gain>=0?'pos':'neg'}">Gan: ${fmt(gain)} · ${pct(margin)}</span>`
       : `<span class="profit-chip neu">Sin costo cargado</span>`;
     const prod = products.find(p=>p.id===item.id);
-    const hasBulk = prod&&prod.bulkQty>0&&prod.bulkPrice>0;
-    const bulkHtml = hasBulk
-      ? item.bulkActive
-        ? `<div class="bulk-applied">🏷️ Precio mayorista aplicado — ${item.qty} unid. a ${fmt(item.sale)} c/u</div>`
-        : `<div class="bulk-applied hidden" id="ba-${i}"></div>
-           <div class="bulk-tag" style="margin-top:8px">🏷️ Mayorista: ${fmt(prod.bulkPrice)} c/u desde ${prod.bulkQty} unid.</div>`
-      : '';
+    const hasBulk  = prod&&prod.bulkQty>0&&prod.bulkPrice>0;
+    const hasFardo = prod&&prod.fardoQty>0&&prod.fardoPrice>0;
+    let bulkHtml = '';
+    if(item.fardoActive){
+      bulkHtml = `<div class="bulk-applied" style="background:#e8f4ff;border-color:#b0d4f0;color:#1a5a8a">📦 Precio fardo aplicado — ${item.qty} unid. a ${fmt(item.sale)} c/u</div>`;
+    } else if(item.bulkActive){
+      bulkHtml = `<div class="bulk-applied">🏷️ Precio mayorista aplicado — ${item.qty} unid. a ${fmt(item.sale)} c/u</div>`;
+    } else {
+      const tags = [];
+      if(hasBulk)  tags.push(`<div class="bulk-tag" style="margin-top:8px">🏷️ Mayorista: ${fmt(prod.bulkPrice)} c/u desde ${prod.bulkQty} unid.</div>`);
+      if(hasFardo) tags.push(`<div class="bulk-tag" style="margin-top:4px;background:#e8f4ff;border-color:#b0d4f0;color:#1a5a8a">📦 Fardo: ${fmt(prod.fardoPrice)} c/u desde ${prod.fardoQty} unid.</div>`);
+      bulkHtml = tags.join('');
+    }
     return `
     <div class="cart-item">
       <div class="ci-top">
@@ -1557,19 +1593,23 @@ function newOrder(){
 // ═══════════════════════════════════════════
 // ADMIN — GESTIÓN DE PRODUCTOS
 // ═══════════════════════════════════════════
-function renderAdmin(){
+function renderAdmin(q){
   const w=el('adminList');
-  if(!products.length){
-    w.innerHTML=`<div class="empty"><div class="empty-ico">📦</div><div class="empty-txt">Sin productos. Agregá uno arriba.</div></div>`;
-    return;
+  const query = q!==undefined ? q : (el('adminSearch')?el('adminSearch').value.toLowerCase().trim():'');
+  const list = query ? products.filter(p=>p.name.toLowerCase().includes(query)) : products;
+  if(!list.length){
+    w.innerHTML=`<div class="empty"><div class="empty-ico">📦</div><div class="empty-txt">${query?'Sin resultados para "'+query+'"':'Sin productos. Agregá uno arriba.'}</div></div>`;
+    renderSyncStatus(); return;
   }
-  w.innerHTML=products.map(p=>{
+  w.innerHTML=list.map(p=>{
     const hasCost=p.cost>0;
     const margin =hasCost?(p.sale-p.cost)/p.sale*100:null;
     const cls    =margin===null?'neu':margin>=0?'pos':'neg';
     const tag    =margin===null?'Sin costo':pct(margin)+' margen';
     const bulkHtml=p.bulkQty>0&&p.bulkPrice>0
       ?`<span class="bulk-tag" style="margin-top:2px">🏷️ ${p.bulkQty}+ → ${fmt(p.bulkPrice)}</span>`:'';
+    const fardoHtml=p.fardoQty>0&&p.fardoPrice>0
+      ?`<span class="bulk-tag" style="margin-top:2px;background:#e8f4ff;border-color:#b0d4f0;color:#1a5a8a">📦 Fardo ${p.fardoQty}+ → ${fmt(p.fardoPrice)}${p.fardoCost>0?' · costo '+fmt(p.fardoCost):''}</span>`:'`';
     return `
     <div class="admin-row">
       <div class="ar-info">
@@ -1579,7 +1619,7 @@ function renderAdmin(){
           ${hasCost?`<span class="ar-cost">· Costo ${fmt(p.cost)}</span>`:''}
           <span class="ar-tag ${cls}">${tag}</span>
         </div>
-        ${bulkHtml}
+        ${bulkHtml}${fardoHtml}
       </div>
       <div class="ar-btns">
         <button class="ar-btn"     onclick="openEdit(${p.id})">✏️</button>
@@ -1594,6 +1634,7 @@ function openAdd(){
   el('modalTitle').textContent='Nuevo producto';
   el('mName').value=''; el('mSale').value=''; el('mCost').value='';
   el('mBulkQty').value=''; el('mBulkPrice').value='';
+  el('mFardoQty').value=''; el('mFardoPrice').value=''; el('mFardoCost').value='';
   el('modalOverlay').classList.add('open');
   setTimeout(()=>el('mName').focus(),300);
 }
@@ -1603,6 +1644,7 @@ function openEdit(id){
   el('modalTitle').textContent='Editar producto';
   el('mName').value=p.name; el('mSale').value=p.sale; el('mCost').value=p.cost||'';
   el('mBulkQty').value=p.bulkQty||''; el('mBulkPrice').value=p.bulkPrice||'';
+  el('mFardoQty').value=p.fardoQty||''; el('mFardoPrice').value=p.fardoPrice||''; el('mFardoCost').value=p.fardoCost||'';
   el('modalOverlay').classList.add('open');
   setTimeout(()=>el('mName').focus(),300);
 }
@@ -1613,18 +1655,22 @@ function saveProduct(){
   const cost=parseInt(el('mCost').value)||0;
   const bulkQty=parseInt(el('mBulkQty').value)||0;
   const bulkPrice=parseInt(el('mBulkPrice').value)||0;
+  const fardoQty=parseInt(el('mFardoQty').value)||0;
+  const fardoPrice=parseInt(el('mFardoPrice').value)||0;
+  const fardoCost=parseInt(el('mFardoCost').value)||0;
   if(!name){ toast('⚠  Ingresá un nombre'); return; }
   if(!sale){ toast('⚠  Ingresá un precio de venta'); return; }
   if(bulkPrice>0 && bulkPrice>=sale){ toast('⚠  El precio mayorista debe ser menor al precio normal'); return; }
+  if(fardoPrice>0 && bulkPrice>0 && fardoPrice>=bulkPrice){ toast('⚠  El precio fardo debe ser menor al mayorista'); return; }
+  if(fardoPrice>0 && fardoPrice>=sale){ toast('⚠  El precio fardo debe ser menor al precio normal'); return; }
   if(editId){
     const p=products.find(x=>x.id===editId);
-    if(p){ p.name=name; p.sale=sale; p.cost=cost; p.bulkQty=bulkQty; p.bulkPrice=bulkPrice; }
-    // Re-sync carrito: actualizar precio y volver a evaluar mayorista
+    if(p){ p.name=name; p.sale=sale; p.cost=cost; p.bulkQty=bulkQty; p.bulkPrice=bulkPrice; p.fardoQty=fardoQty; p.fardoPrice=fardoPrice; p.fardoCost=fardoCost; }
     const ci=cart.find(c=>c.id===editId);
-    if(ci){ ci.name=name; ci.cost=cost; ci.bulkQty=bulkQty; ci.bulkPrice=bulkPrice; applyBulkPrice(ci, p); }
+    if(ci){ ci.name=name; ci.cost=cost; ci.bulkQty=bulkQty; ci.bulkPrice=bulkPrice; ci.fardoQty=fardoQty; ci.fardoPrice=fardoPrice; ci.fardoCost=fardoCost; applyBulkPrice(ci, p); }
     saveCart(); toast('✓  Producto actualizado');
   } else {
-    products.push({id:nextId(),name,sale,cost,bulkQty,bulkPrice});
+    products.push({id:nextId(),name,sale,cost,bulkQty,bulkPrice,fardoQty,fardoPrice,fardoCost});
     toast('✓  Producto agregado');
   }
   saveProducts(); closeModal(); renderAdmin();
