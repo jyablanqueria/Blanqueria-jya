@@ -11,22 +11,25 @@
 <style>
 :root, * { color-scheme: light only; }
 :root {
-  --bg:        #f7f7f7;
+  --bg:        #f7f5f8;
   --surface:   #ffffff;
-  --surface2:  #f2f2f2;
-  --border:    #e8e8e8;
-  --border2:   #d0d0d0;
-  --ink:       #0a0a0a;
-  --ink-mid:   #555555;
-  --ink-dim:   #999999;
-  --ink-xdim:  #cccccc;
+  --surface2:  #f2f0f4;
+  --border:    #e8e4ec;
+  --border2:   #d0cad8;
+  --ink:       #1a0a2e;
+  --ink-mid:   #5a4a6a;
+  --ink-dim:   #9a8aaa;
+  --ink-xdim:  #ccc4d8;
   --profit:    #1a7a45;
   --profit-bg: #f0faf5;
   --loss:      #c0392b;
   --loss-bg:   #fdf3f2;
+  --accent:    #8b5cf6;
+  --accent-bg: #f5f0ff;
+  --accent2:   #d946a8;
   --r:         12px;
   --r-sm:      8px;
-  --shadow:    0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+  --shadow:    0 1px 4px rgba(100,50,150,.07), 0 4px 16px rgba(100,50,150,.05);
 }
 
 *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
@@ -42,13 +45,14 @@ body{
 
 /* ── HEADER ── */
 .header{
-  background:var(--ink);
+  background: linear-gradient(135deg, #1a0a2e 0%, #2d1854 100%);
   padding:0 20px;
   height:60px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   position:sticky; top:0; z-index:200;
+  box-shadow: 0 2px 12px rgba(139,92,246,.15);
 }
 .brand{
   font-family:'Syne',sans-serif;
@@ -94,7 +98,7 @@ body{
   transition:all .15s;
   letter-spacing:.7px; text-transform:uppercase; white-space:nowrap;
 }
-.nav-tab.active{ color:var(--ink); border-bottom-color:var(--ink); }
+.nav-tab.active{ color:var(--accent); border-bottom-color:var(--accent); }
 
 /* ── VIEWS ── */
 .view{ display:none; padding:20px 20px 40px; max-width:600px; margin:0 auto; }
@@ -116,7 +120,7 @@ body{
   transition:border-color .15s;
 }
 .search-inp::placeholder{ color:var(--ink-xdim); }
-.search-inp:focus{ outline:none; border-color:var(--ink); }
+.search-inp:focus{ outline:none; border-color:var(--accent); }
 
 /* ── PRODUCT ROW ── */
 .prod-row{
@@ -126,9 +130,9 @@ body{
 }
 .prod-row::before{
   content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
-  background:var(--ink); opacity:0; transition:opacity .15s;
+  background:var(--accent); opacity:0; transition:opacity .15s;
 }
-.prod-row.in-cart{ border-color:var(--border2); background:#fafafa; }
+.prod-row.in-cart{ border-color:var(--accent); background:#fdf8ff; }
 .prod-row.in-cart::before{ opacity:1; }
 .prod-info{ flex:1; min-width:0; }
 .prod-name{ font-size:14px; font-weight:500; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
@@ -140,12 +144,12 @@ body{
 .prod-tag.has-cost{ background:var(--profit-bg); color:var(--profit); }
 .prod-tag.no-cost{ background:var(--surface2); color:var(--ink-dim); }
 .add-btn{
-  background:var(--ink); color:#fff; border:none; border-radius:var(--r-sm);
+  background:var(--accent); color:#fff; border:none; border-radius:var(--r-sm);
   width:38px; height:38px; font-size:24px; font-weight:300;
   cursor:pointer; display:flex; align-items:center; justify-content:center;
   transition:all .15s; flex-shrink:0; line-height:1;
 }
-.add-btn:active{ transform:scale(.88); background:#333; }
+.add-btn:active{ transform:scale(.88); background:#7c3aed; }
 
 /* ── CART ITEM ── */
 .cart-item{
@@ -802,6 +806,7 @@ body{
   <div class="nav-tab"        id="tab-combos"     onclick="switchTab('combos')">🎁 Combos</div>
   <div class="nav-tab"        id="tab-carrito"    onclick="switchTab('carrito')">Carrito</div>
   <div class="nav-tab"        id="tab-cobros"     onclick="switchTab('cobros')">💰 Cobros</div>
+  <div class="nav-tab"        id="tab-historial"  onclick="switchTab('historial')">📋 Historial</div>
   <div class="nav-tab"        id="tab-picking"    onclick="switchTab('picking')">📦 Armado</div>
   <div class="nav-tab"        id="tab-ganancias"  onclick="switchTab('ganancias')">Ganancias</div>
   <div class="nav-tab"        id="tab-topventas"  onclick="switchTab('topventas')">⭐ Top Ventas</div>
@@ -809,6 +814,19 @@ body{
   <div class="nav-tab"        id="tab-calc"       onclick="switchTab('calc')">Calculadora</div>
   <div class="nav-tab"        id="tab-remito"     onclick="switchTab('remito')">Remito</div>
   <div class="nav-tab"        id="tab-admin"      onclick="switchTab('admin')">Productos</div>
+</div>
+
+<!-- ══ HISTORIAL ══ -->
+<div class="view" id="view-historial">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-inp" id="histSearch" type="text" placeholder="Buscar por nombre de clienta…" oninput="renderHistorial()">
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button id="hTabTodos" class="btn btn-dark" onclick="setHistView('todos')" style="margin:0;flex:1;padding:10px;font-size:11px">📋 Todos</button>
+    <button id="hTabCliente" class="btn btn-outline" onclick="setHistView('cliente')" style="margin:0;flex:1;padding:10px;font-size:11px">👤 Por clienta</button>
+  </div>
+  <div id="historialContent"></div>
 </div>
 
 <!-- ══ COBROS ══ -->
@@ -1189,7 +1207,7 @@ function toast(msg){
 // TABS
 // ═══════════════════════════════════════════
 function switchTab(name){
-  ['catalogo','combos','carrito','cobros','picking','ganancias','topventas','mensual','calc','remito','admin'].forEach(t=>{
+  ['catalogo','combos','carrito','cobros','historial','picking','ganancias','topventas','mensual','calc','remito','admin'].forEach(t=>{
     const tb=el('tab-'+t), vw=el('view-'+t);
     if(tb) tb.classList.toggle('active', t===name);
     if(vw) vw.classList.toggle('active', t===name);
@@ -1198,6 +1216,7 @@ function switchTab(name){
   if(name==='combos')    renderCombos();
   if(name==='carrito')   renderCart();
   if(name==='cobros')    renderCobros();
+  if(name==='historial') renderHistorial();
   if(name==='picking')   renderPicking();
   if(name==='ganancias') renderProfits();
   if(name==='topventas') renderTopVentas();
@@ -2311,8 +2330,187 @@ function removeComboFromCart(cartId){
   saveCart(); updateBadge(); renderCart();
 }
 
+function cartGanancia(){
+  return cart.reduce((s,item)=>{
+    if(item.isCombo) return s + (item.cost>0 ? item.sale-item.cost : 0);
+    return s + (item.cost>0 ? (item.sale-item.cost)*item.qty : 0);
+  }, 0);
+}
+
 // ═══════════════════════════════════════════
-// COBROS PENDIENTES
+// HISTORIAL DE PEDIDOS
+// ═══════════════════════════════════════════
+let histView = 'todos'; // 'todos' | 'cliente'
+
+function setHistView(v){
+  histView = v;
+  el('hTabTodos').className   = v==='todos'   ? 'btn btn-dark'    : 'btn btn-outline';
+  el('hTabCliente').className = v==='cliente' ? 'btn btn-dark'    : 'btn btn-outline';
+  el('hTabTodos').style.margin = el('hTabCliente').style.margin = '0';
+  el('hTabTodos').style.flex = el('hTabCliente').style.flex = '1';
+  el('hTabTodos').style.padding = el('hTabCliente').style.padding = '10px';
+  el('hTabTodos').style.fontSize = el('hTabCliente').style.fontSize = '11px';
+  renderHistorial();
+}
+
+function renderHistorial(){
+  const w = el('historialContent'); if(!w) return;
+  const historial = lsGet('ja_historial', []);
+  const q = el('histSearch') ? el('histSearch').value.trim().toLowerCase() : '';
+  const filtered = q ? historial.filter(p=>p.nombre.toLowerCase().includes(q)) : historial;
+
+  if(!filtered.length){
+    w.innerHTML=`<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">${q?'No hay pedidos de "'+q+'"':'Todavía no hay pedidos cerrados.<br>Cerrá tu primer pedido desde el Carrito.'}</div></div>`;
+    return;
+  }
+
+  if(histView==='cliente' && q){
+    // Vista perfil de clienta
+    const total     = filtered.reduce((s,p)=>s+p.total,0);
+    const ganancia  = filtered.reduce((s,p)=>s+(p.ganancia||0),0);
+    const prodCount = {};
+    filtered.forEach(p=>p.items.forEach(i=>{ prodCount[i.name]=(prodCount[i.name]||0)+i.qty; }));
+    const topProd   = Object.entries(prodCount).sort((a,b)=>b[1]-a[1])[0];
+    const ultima    = filtered[0].fecha;
+
+    w.innerHTML = `
+      <div style="background:linear-gradient(135deg,var(--accent-bg),#fff0fa);border:1px solid var(--accent);border-radius:var(--r);padding:18px;margin-bottom:14px">
+        <div style="font-size:20px;font-weight:800;font-family:'Syne',sans-serif;color:var(--ink);margin-bottom:12px">👤 ${esc(filtered[0].nombre)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:white;border-radius:var(--r-sm);padding:10px 12px">
+            <div style="font-size:9px;font-weight:700;color:var(--ink-dim);letter-spacing:1.5px;text-transform:uppercase">Pedidos</div>
+            <div style="font-size:20px;font-weight:800;font-family:'Syne',sans-serif">${filtered.length}</div>
+          </div>
+          <div style="background:white;border-radius:var(--r-sm);padding:10px 12px">
+            <div style="font-size:9px;font-weight:700;color:var(--ink-dim);letter-spacing:1.5px;text-transform:uppercase">Total gastado</div>
+            <div style="font-size:18px;font-weight:800;font-family:'Syne',sans-serif">${fmt(total)}</div>
+          </div>
+          ${ganancia>0?`<div style="background:var(--profit-bg);border-radius:var(--r-sm);padding:10px 12px">
+            <div style="font-size:9px;font-weight:700;color:var(--profit);letter-spacing:1.5px;text-transform:uppercase">Tu ganancia</div>
+            <div style="font-size:18px;font-weight:800;font-family:'Syne',sans-serif;color:var(--profit)">${fmt(ganancia)}</div>
+          </div>`:''}
+          ${topProd?`<div style="background:white;border-radius:var(--r-sm);padding:10px 12px">
+            <div style="font-size:9px;font-weight:700;color:var(--ink-dim);letter-spacing:1.5px;text-transform:uppercase">Más comprado</div>
+            <div style="font-size:12px;font-weight:600;margin-top:2px">${esc(topProd[0])}</div>
+          </div>`:''}
+        </div>
+        <div style="font-size:11px;color:var(--ink-dim);margin-top:10px">Última compra: ${ultima}</div>
+      </div>
+      <div class="sec"><span class="sec-txt">Sus pedidos</span><span class="sec-line"></span></div>
+      ${filtered.map(p=>renderPedidoCard(p)).join('')}`;
+    return;
+  }
+
+  // Vista general o filtrada sin perfil
+  if(histView==='cliente' && !q){
+    // Agrupar por clienta
+    const clientes = {};
+    filtered.forEach(p=>{
+      const k = p.nombre||'Sin nombre';
+      if(!clientes[k]) clientes[k]={ nombre:k, pedidos:0, total:0, ultima:'' };
+      clientes[k].pedidos++;
+      clientes[k].total += p.total;
+      if(!clientes[k].ultima) clientes[k].ultima = p.fecha;
+    });
+    const lista = Object.values(clientes).sort((a,b)=>b.total-a.total);
+    w.innerHTML = `
+      <div style="font-size:12px;color:var(--ink-dim);margin-bottom:12px">${lista.length} clienta${lista.length!==1?'s':''} con historial</div>
+      ${lista.map(c=>`
+      <div onclick="buscarClientaHistorial('${c.nombre.replace(/'/g,"\\'")}') " style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px">
+        <div style="background:var(--accent-bg);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👤</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;color:var(--ink)">${esc(c.nombre)}</div>
+          <div style="font-size:11px;color:var(--ink-dim);margin-top:2px">${c.pedidos} pedido${c.pedidos!==1?'s':''} · Total ${fmt(c.total)} · Última: ${c.ultima}</div>
+        </div>
+        <div style="color:var(--ink-xdim);font-size:18px">›</div>
+      </div>`).join('')}`;
+    return;
+  }
+
+  // Vista cronológica todos
+  w.innerHTML = `
+    <div style="font-size:12px;color:var(--ink-dim);margin-bottom:12px">${filtered.length} pedido${filtered.length!==1?'s':''}</div>
+    ${filtered.map(p=>renderPedidoCard(p)).join('')}`;
+}
+
+function buscarClientaHistorial(nombre){
+  el('histSearch').value = nombre;
+  histView = 'cliente';
+  el('hTabTodos').className   = 'btn btn-outline';
+  el('hTabCliente').className = 'btn btn-dark';
+  el('hTabTodos').style.margin = el('hTabCliente').style.margin = '0';
+  el('hTabTodos').style.flex = el('hTabCliente').style.flex = '1';
+  el('hTabTodos').style.padding = el('hTabCliente').style.padding = '10px';
+  el('hTabTodos').style.fontSize = el('hTabCliente').style.fontSize = '11px';
+  renderHistorial();
+}
+
+function renderPedidoCard(p){
+  const ganancia = p.ganancia||0;
+  const ganHtml  = ganancia>0
+    ? `<span style="font-size:11px;font-weight:600;color:var(--profit);background:var(--profit-bg);border-radius:20px;padding:2px 8px">Gan: ${fmt(ganancia)}</span>`
+    : '';
+  return `
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer" onclick="togglePedidoDetail('pd-${p.id}')">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--ink)">${esc(p.nombre)}</div>
+        <div style="font-size:11px;color:var(--ink-dim);margin-top:2px">${p.fecha}${p.nota?' · '+esc(p.nota):''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:16px;font-weight:800;font-family:'Syne',sans-serif">${fmt(p.total)}</div>
+        ${ganHtml}
+      </div>
+      <div style="color:var(--ink-xdim);font-size:16px" id="arr-${p.id}">›</div>
+    </div>
+    <div id="pd-${p.id}" style="display:none;padding:12px 16px">
+      ${p.items.map(i=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="color:var(--ink);font-weight:500">${i.tipo==='combo'?'🎁 ':''} ${i.qty>1?i.qty+'x ':''} ${esc(i.name)}</span>
+        <span style="color:var(--ink-dim)">${fmt(i.sale * (i.tipo==='combo'?1:i.qty))}</span>
+      </div>`).join('')}
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button onclick="repetirPedido(${p.id})" style="background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;flex:1">🔄 Repetir pedido</button>
+        <button onclick="eliminarPedido(${p.id})" style="background:none;border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;font-size:12px;cursor:pointer;color:var(--ink-dim)">🗑</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function togglePedidoDetail(id){
+  const d = el(id);
+  if(!d) return;
+  const open = d.style.display!=='none';
+  d.style.display = open?'none':'block';
+  const pedidoId = id.replace('pd-','');
+  const arr = el('arr-'+pedidoId);
+  if(arr) arr.textContent = open?'›':'↓';
+}
+
+function repetirPedido(id){
+  const historial = lsGet('ja_historial', []);
+  const p = historial.find(x=>x.id===id); if(!p) return;
+  if(!confirm(`¿Cargar el pedido de ${p.nombre} al carrito?\n\nSe van a agregar ${p.items.length} producto${p.items.length!==1?'s':''}.`)) return;
+  p.items.forEach(item=>{
+    const prod = products.find(x=>x.name===item.name);
+    if(!prod) return;
+    const existing = cart.find(c=>!c.isCombo&&c.id===prod.id);
+    if(existing){ existing.qty+=item.qty; }
+    else{ cart.push({id:prod.id,name:prod.name,sale:prod.sale,cost:prod.cost||0,qty:item.qty,bulkQty:prod.bulkQty||0,bulkPrice:prod.bulkPrice||0}); }
+  });
+  saveCart(); updateBadge();
+  toast('✓ Pedido cargado al carrito');
+  switchTab('carrito');
+}
+
+function eliminarPedido(id){
+  if(!confirm('¿Eliminar este pedido del historial?')) return;
+  let historial = lsGet('ja_historial', []);
+  historial = historial.filter(x=>x.id!==id);
+  lsSet('ja_historial', historial);
+  renderHistorial();
+  toast('Pedido eliminado');
+}
 // ═══════════════════════════════════════════
 let cobros = lsGet('ja_cobros', []);
 function saveCobros(){ lsSet('ja_cobros', cobros); }
@@ -2331,13 +2529,28 @@ function cerrarPedido(){
     registrarVentaProducto(item.id, item.qty);
   });
 
-  // Si tiene nota de cobro pendiente, agregar a cobros
+  // Guardar en historial completo
+  const historial = lsGet('ja_historial', []);
+  historial.unshift({
+    id:     Date.now(),
+    fecha:  today(),
+    nombre: nombre || 'Sin nombre',
+    nota,
+    total,
+    ganancia: cartGanancia(),
+    items: cart.map(i=> i.isCombo
+      ? { tipo:'combo', name:i.name, sale:i.sale, cost:i.cost, qty:1 }
+      : { tipo:'prod',  name:i.name, sale:i.sale, cost:i.cost||0, qty:i.qty }
+    )
+  });
+  lsSet('ja_historial', historial);
+
+  // Si tiene nota de cobro pendiente
   if(esPendiente || (nombre && confirm(`¿Registrar este pedido de ${nombre||'clienta'} como pendiente de cobro?\n\nTotal: ${fmt(total)}`))){
     cobros.push({
       id:     nextCobroId(),
       nombre: nombre || 'Sin nombre',
-      total,
-      nota,
+      total, nota,
       fecha:  today(),
       items:  cart.map(i=>i.isCombo ? `🎁 ${i.name}` : `${i.qty}x ${i.name}`).join(', '),
       pagado: false
@@ -2345,7 +2558,7 @@ function cerrarPedido(){
     saveCobros();
     toast('✓ Pedido registrado en Cobros pendientes');
   } else {
-    toast('✓ Venta registrada');
+    toast('✓ Venta registrada en el historial');
   }
 
   // Guardar en historial mensual
@@ -2359,7 +2572,7 @@ function cerrarPedido(){
   lsSet('ja_cart_client','');
   lsSet('ja_cart_note','');
   cart=[]; saveCart(); updateBadge();
-  switchTab('cobros');
+  switchTab('historial');
 }
 
 function agregarCobro(){
